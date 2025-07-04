@@ -2,6 +2,7 @@ from typing import Dict, List
 from models import CableDesign, DesignRequest
 from database import SessionLocal
 from typing import Dict
+from models import Product, ProductEnquiry  
 
 db = SessionLocal()
 
@@ -72,13 +73,9 @@ def handle_design_chat(user_id: str, message: str):
 
 
 
-dummy_products = [
-    {"product_code": "A2N2XY116", "cable_name": "A2N2XY", "num_cores": 3, "conductor_type": "Aluminum", "area": 4.0,"customer_code": "CUST001", "quantity": 10, "length": 100},
-    {"product_code": "A2N2XY117", "cable_name": "A2N2XY", "num_cores": 4, "conductor_type": "Copper", "area": 6.0, "customer_code": "CUST002", "quantity": 5, "length": 50},
-    {"product_code": "A2XFY220", "cable_name": "A2XFY", "num_cores": 2, "conductor_type": "Aluminum", "area": 2.5, "customer_code": "CUST003", "quantity": 20, "length": 200},
-    {"product_code": "A2XFY221", "cable_name": "A2XFY", "num_cores": 3, "conductor_type": "Copper", "area": 10.0, "customer_code": "CUST004", "quantity": 15, "length": 150},
-    {"product_code": "A2B2XY330", "cable_name": "A2B2XY", "num_cores": 5, "conductor_type": "Aluminum", "area": 16.0, "customer_code": "CUST005", "quantity": 8, "length": 80}
-]
+
+
+
 
 FIELDS = [
     "cable_name", "num_cores", "conductor_type", "area",
@@ -109,20 +106,32 @@ def handle_enquiry_chat(user_id: str, message: str):
     data = session["data"]
 
     if step > 0:
-        data[FIELDS[step - 1]] = message
+        field = FIELDS[step - 1]
+        if field in ["num_cores", "quantity"]:
+            data[field] = int(message)
+        elif field in ["area", "length"]:
+            data[field] = float(message)
+        else:
+            data[field] = message
 
     if step == len(FIELDS):
-        match = next((p for p in dummy_products if
-                      p["cable_name"].lower() == data["cable_name"].lower() and
-                      p["num_cores"] == int(data["num_cores"]) and
-                      p["conductor_type"].lower() == data["conductor_type"].lower() and
-                      p["area"] == float(data["area"])), None)
+        match = db.query(Product).filter_by(
+            cable_name=data["cable_name"],
+            num_cores=data["num_cores"],
+            conductor_type=data["conductor_type"],
+            area=data["area"]
+        ).first()
 
         if not match:
             reply = "No matching cable found. Please restart."
         else:
-            data["product_code"] = match["product_code"]
-            reply = f"Enquiry saved! Product Code: {match['product_code']}"
+            data["product_code"] = match.product_code
+
+            new_enquiry = ProductEnquiry(**data)
+            db.add(new_enquiry)
+            db.commit()
+
+            reply = f"Enquiry saved! Product Code: {match.product_code}"
 
         del user_sessions[user_id]
         return {"reply": reply}
