@@ -11,11 +11,11 @@ router = APIRouter()
 
 @router.post("/enquiry/chat")
 async def cable_enquiry_chat(input: ChatInput):
-    return handle_design_chat(input.user_id, input.message)
+    return handle_enquiry_chat(input.user_id, input.message)
 
 @router.post("/design/chat")
 async def cable_design_chat(input: ChatInput):
-    return handle_enquiry_chat(input.user_id, input.message)
+    return handle_design_chat(input.user_id, input.message)
 
 @router.get("/enquiry-requests", response_model=List[DesignRequestOut])
 def list_design_requests(db: Session = Depends(get_db)):
