@@ -69,14 +69,6 @@ def handle_design_chat(user_id: str, message: str):
 
 
 
-
-
-
-
-
-
-
-
 FIELDS = [
     "cable_name", "num_cores", "conductor_type", "area",
     "customer_code", "quantity", "length"
