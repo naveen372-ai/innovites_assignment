@@ -1,0 +1,2106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>S2P App Config Editor</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    background: #f0f2f5;
+    color: #1f2328;
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ────────────────────────────────────────────── */
+  .header {
+    background: #1f2328;
+    color: #fff;
+    padding: 0 24px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .header-title { font-size: 15px; font-weight: 600; letter-spacing: .01em; }
+
+  /* Agent switcher pill */
+  .agent-switcher {
+    display: flex;
+    background: #374151;
+    border-radius: 20px;
+    padding: 3px;
+    gap: 2px;
+  }
+  .agent-btn {
+    padding: 3px 12px;
+    border-radius: 16px;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    color: #9ca3af;
+    background: transparent;
+    transition: background .15s, color .15s;
+    white-space: nowrap;
+  }
+  .agent-btn.active { background: #3b82d4; color: #fff; }
+
+  .version-badge {
+    background: #3b82d4;
+    color: #fff;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 500;
+  }
+  .unsaved-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #f59e0b;
+    display: none;
+  }
+  .unsaved-dot.visible { display: block; }
+  .header-actions { display: flex; gap: 8px; align-items: center; }
+
+  .btn {
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: opacity .15s;
+  }
+  .btn:hover { opacity: .85; }
+  .btn-primary { background: #3b82d4; color: #fff; }
+  .btn-danger  { background: #dc2626; color: #fff; }
+  .btn-ghost   { background: transparent; color: #e5e7eb; border: 1px solid #444; }
+  .btn-sm      { padding: 4px 10px; font-size: 12px; }
+
+  /* ── LAYOUT ─────────────────────────────────────────────── */
+  .layout { display: flex; min-height: calc(100vh - 52px); }
+
+  .sidebar {
+    width: 220px;
+    background: #fff;
+    border-right: 1px solid #e5e7eb;
+    padding: 16px 0;
+    flex-shrink: 0;
+    position: sticky;
+    top: 52px;
+    height: calc(100vh - 52px);
+    overflow-y: auto;
+  }
+  .sidebar-section {
+    padding: 4px 12px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: #57606a;
+    margin-top: 12px;
+  }
+  .nav-item {
+    display: block;
+    padding: 7px 16px;
+    cursor: pointer;
+    color: #1f2328;
+    font-size: 13px;
+    border-left: 3px solid transparent;
+    transition: background .1s, border-color .1s;
+    text-decoration: none;
+  }
+  .nav-item:hover { background: #f7f8fa; }
+  .nav-item.active { border-left-color: #3b82d4; background: #eff6ff; color: #3b82d4; font-weight: 600; }
+
+  .content { flex: 1; padding: 24px; max-width: 860px; }
+
+  /* ── SECTION ─────────────────────────────────────────────── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .section-title { font-size: 17px; font-weight: 700; color: #1f2328; }
+  .section-sub   { font-size: 12px; color: #57606a; margin-top: 2px; }
+
+  .panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 16px; overflow: hidden; }
+  .panel-head {
+    padding: 12px 16px;
+    background: #f7f8fa;
+    border-bottom: 1px solid #e5e7eb;
+    font-weight: 600;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .panel-body { padding: 16px; }
+
+  .field-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f2f5;
+  }
+  .field-row:last-child { border-bottom: none; }
+  .field-label { width: 220px; flex-shrink: 0; font-size: 13px; color: #57606a; padding-top: 6px; }
+  .field-label small { display: block; font-size: 11px; color: #9ca3af; margin-top: 2px; }
+  .field-value { flex: 1; }
+
+  input[type="text"], input[type="number"], textarea, select {
+    width: 100%;
+    padding: 6px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    color: #1f2328;
+    background: #fff;
+    outline: none;
+    transition: border-color .15s;
+  }
+  input:focus, textarea:focus, select:focus { border-color: #3b82d4; }
+  textarea { resize: vertical; min-height: 64px; }
+
+  .toggle { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute; inset: 0;
+    background: #d1d5db; border-radius: 22px; cursor: pointer; transition: background .2s;
+  }
+  .slider::before {
+    content: ''; position: absolute;
+    width: 16px; height: 16px; left: 3px; top: 3px;
+    background: #fff; border-radius: 50%; transition: transform .2s;
+  }
+  .toggle input:checked + .slider { background: #3b82d4; }
+  .toggle input:checked + .slider::before { transform: translateX(18px); }
+
+  /* ── CHIP EDITOR ─────────────────────────────────────────── */
+  .chip-editor {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    padding: 6px; border: 1px solid #d1d5db; border-radius: 6px;
+    background: #fff; min-height: 38px; align-items: center;
+  }
+  .chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af;
+    border-radius: 12px; padding: 2px 8px; font-size: 12px; font-weight: 500;
+  }
+  .chip-remove { cursor: pointer; color: #6b7280; font-size: 14px; line-height: 1; background: none; border: none; padding: 0; }
+  .chip-remove:hover { color: #dc2626; }
+  .chip-input { border: none; outline: none; font-size: 12px; min-width: 80px; flex: 1; padding: 2px 4px; }
+
+  /* ── CARD LIST ───────────────────────────────────────────── */
+  .card-list { display: flex; flex-direction: column; gap: 12px; }
+  .card { border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; background: #fff; }
+  .card-head {
+    padding: 10px 14px; background: #f7f8fa; border-bottom: 1px solid #e5e7eb;
+    display: flex; align-items: center; justify-content: space-between;
+    font-weight: 600; font-size: 13px;
+  }
+  .card-body { padding: 14px; }
+  .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .card-field label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: #57606a; margin-bottom: 4px; }
+  .card-field.full { grid-column: 1 / -1; }
+
+  /* ── RANGE SLIDER ────────────────────────────────────────── */
+  .slider-wrap { display: flex; align-items: center; gap: 10px; }
+  input[type="range"] { flex: 1; accent-color: #3b82d4; cursor: pointer; }
+  .slider-value { width: 48px; text-align: center; font-weight: 600; font-size: 13px; color: #3b82d4; padding: 4px 8px; background: #eff6ff; border-radius: 4px; }
+
+  /* ── TAB PAGES ───────────────────────────────────────────── */
+  .tab-page { display: none; }
+  .tab-page.active { display: block; }
+
+  /* ── TOAST ───────────────────────────────────────────────── */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    padding: 12px 20px; border-radius: 8px; font-size: 13px; font-weight: 500; color: #fff;
+    z-index: 9999; opacity: 0; transform: translateY(8px);
+    transition: opacity .25s, transform .25s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.success { background: #16a34a; }
+  .toast.error   { background: #dc2626; }
+  .toast.info    { background: #3b82d4; }
+
+  /* ── MODAL ───────────────────────────────────────────────── */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 200; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: #fff; border-radius: 10px; width: 480px; max-width: 95vw; padding: 24px; box-shadow: 0 8px 32px rgba(0,0,0,.15); }
+  .modal-title { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+  .modal-body  { font-size: 13px; color: #57606a; margin-bottom: 20px; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+  /* ── PR MODAL ────────────────────────────────────────────── */
+  .pr-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.55); z-index: 300;
+    align-items: center; justify-content: center;
+  }
+  .pr-overlay.open { display: flex; }
+  .pr-modal {
+    background: #fff; border-radius: 10px;
+    width: 560px; max-width: 96vw; max-height: 92vh;
+    display: flex; flex-direction: column;
+    box-shadow: 0 12px 40px rgba(0,0,0,.2);
+    overflow: hidden;
+  }
+  .pr-modal-head {
+    padding: 16px 20px; border-bottom: 1px solid #e5e7eb;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .pr-modal-title { font-size: 15px; font-weight: 700; color: #1f2328; }
+  .pr-modal-sub   { font-size: 12px; color: #57606a; margin-top: 2px; }
+  .pr-modal-body  { padding: 20px; overflow-y: auto; flex: 1; }
+  .pr-modal-footer {
+    padding: 14px 20px; border-top: 1px solid #e5e7eb;
+    display: flex; gap: 8px; justify-content: flex-end; align-items: center;
+  }
+
+  .pr-field { margin-bottom: 14px; }
+  .pr-field label {
+    display: block; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: #57606a; margin-bottom: 5px;
+  }
+  .pr-field label span { color: #dc2626; }
+  .pr-field input, .pr-field textarea, .pr-field select {
+    width: 100%; padding: 7px 10px;
+    border: 1px solid #d1d5db; border-radius: 6px;
+    font-size: 13px; font-family: inherit;
+    color: #1f2328; background: #fff; outline: none;
+    transition: border-color .15s;
+  }
+  .pr-field input:focus, .pr-field textarea:focus, .pr-field select:focus { border-color: #3b82d4; }
+  .pr-field textarea { resize: vertical; min-height: 72px; }
+  .pr-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .pr-token-wrap { position: relative; }
+  .pr-token-wrap input { padding-right: 36px; font-family: monospace; letter-spacing: .04em; }
+  .pr-token-eye {
+    position: absolute; right: 9px; top: 50%; transform: translateY(-50%);
+    cursor: pointer; font-size: 14px; color: #9ca3af; user-select: none;
+    background: none; border: none; padding: 0;
+  }
+  .pr-token-eye:hover { color: #3b82d4; }
+
+  .pr-hint { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+  .pr-hint a { color: #3b82d4; text-decoration: none; }
+  .pr-hint a:hover { text-decoration: underline; }
+
+  .pr-section-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .08em; color: #57606a;
+    padding: 6px 0 10px; border-top: 1px solid #f0f2f5; margin-top: 4px;
+  }
+  .pr-section-label:first-child { border-top: none; margin-top: 0; }
+
+  .pr-log {
+    background: #1f2328; border-radius: 6px; padding: 12px 14px;
+    font-family: "SFMono-Regular", Consolas, monospace; font-size: 12px;
+    line-height: 1.6; max-height: 220px; overflow-y: auto;
+    display: none;
+  }
+  .pr-log.visible { display: block; }
+  .pr-log-line { display: flex; gap: 8px; margin-bottom: 2px; }
+  .pr-log-icon { flex-shrink: 0; width: 14px; text-align: center; }
+  .pl-pending { color: #9ca3af; }
+  .pl-running { color: #f59e0b; }
+  .pl-ok      { color: #4ade80; }
+  .pl-err     { color: #f87171; }
+  .pl-link    { color: #60a5fa; text-decoration: underline; cursor: pointer; }
+
+  .pr-result {
+    border-radius: 6px; padding: 12px 14px;
+    font-size: 13px; font-weight: 500; display: none; margin-top: 12px;
+  }
+  .pr-result.visible { display: block; }
+  .pr-result.success { background: #f0fdf4; border: 1px solid #86efac; color: #166534; }
+  .pr-result.error   { background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; }
+  .pr-result a { color: inherit; font-weight: 700; }
+
+  /* ── MISC ────────────────────────────────────────────────── */
+  .maintenance-banner {
+    background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b;
+    padding: 10px 16px; border-radius: 6px; font-size: 13px; font-weight: 500;
+    margin-bottom: 16px; display: none;
+  }
+  .maintenance-banner.visible { display: block; }
+  .last-updated-info { font-size: 12px; color: #9ca3af; }
+  .json-pre { font-family: "SFMono-Regular", Consolas, monospace; font-size: 12px; background: #1f2328; color: #e5e7eb; padding: 16px; border-radius: 6px; overflow: auto; max-height: 480px; white-space: pre; line-height: 1.5; }
+
+  /* ── AGENT BANNER ────────────────────────────────────────── */
+  .agent-banner {
+    background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af;
+    padding: 8px 14px; border-radius: 6px; font-size: 12px; font-weight: 500;
+    margin-bottom: 20px; display: flex; align-items: center; gap: 8px;
+  }
+  .agent-banner .dot { width: 8px; height: 8px; border-radius: 50%; background: #3b82d4; flex-shrink: 0; }
+
+  /* ── EMPTY STATE ─────────────────────────────────────────── */
+  .empty-state { padding: 40px 0; text-align: center; color: #9ca3af; font-size: 13px; }
+
+  /* ── EMAIL TEMPLATE MODAL ────────────────────────────────── */
+  .email-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 300; align-items: center; justify-content: center; }
+  .email-overlay.open { display: flex; }
+  .email-modal { background: #fff; border-radius: 10px; width: 600px; max-width: 96vw; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; }
+  .email-modal-head { padding: 16px 20px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: flex-start; flex-shrink: 0; }
+  .email-modal-title { font-size: 15px; font-weight: 700; color: #1f2328; }
+  .email-modal-sub   { font-size: 12px; color: #57606a; margin-top: 2px; }
+  .email-modal-body  { padding: 20px; overflow-y: auto; flex: 1; }
+  .email-modal-footer { padding: 14px 20px; border-top: 1px solid #e5e7eb; display: flex; gap: 8px; justify-content: flex-end; flex-shrink: 0; }
+  .email-field { margin-bottom: 14px; }
+  .email-field label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: #57606a; margin-bottom: 5px; }
+  .email-field input { width: 100%; padding: 7px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; color: #1f2328; background: #f7f8fa; outline: none; }
+  .email-field textarea { width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; color: #1f2328; font-family: inherit; line-height: 1.6; resize: vertical; outline: none; background: #fff; }
+  .email-field textarea:focus, .email-field input:focus { border-color: #3b82d4; background: #fff; }
+  .email-copy-hint { font-size: 11px; color: #9ca3af; margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- ── GitHub Import Modal ─────────────────────────────────────────────── -->
+<div class="pr-overlay" id="ghImportOverlay">
+  <div class="pr-modal">
+    <div class="pr-modal-head">
+      <div>
+        <div class="pr-modal-title">Import Config from GitHub</div>
+        <div class="pr-modal-sub" id="ghImportSub">Load a config JSON directly from the repository</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="ghImportClose" style="color:#57606a;border-color:#d1d5db">✕</button>
+    </div>
+    <div class="pr-modal-body">
+      <div id="ghImportCorsWarn" style="display:none;background:#fffbeb;border:1px solid #fcd34d;color:#92400e;border-radius:6px;padding:10px 13px;font-size:12px;font-weight:500;margin-bottom:14px;line-height:1.6">
+        ⚠️ <strong>CORS restriction detected.</strong> This page is open via <code>file://</code> — browsers block cross-origin API calls from local files.<br>
+        Serve the editor from a local HTTP server to use GitHub import.
+      </div>
+
+      <div class="pr-section-label">GitHub Credentials</div>
+      <div class="pr-field">
+        <label>Personal Access Token <span>*</span></label>
+        <div class="pr-token-wrap">
+          <input type="password" id="ghImportToken" placeholder="ghp_… or github_pat_…" autocomplete="off" />
+          <button class="pr-token-eye" id="ghImportTokenEye" title="Show / hide token">👁</button>
+        </div>
+        <div class="pr-hint">Needs <code>repo</code> scope. Token is shared with the PR modal.</div>
+      </div>
+
+      <div class="pr-section-label">Repository</div>
+      <div class="pr-field">
+        <label>GitHub API Base URL</label>
+        <input type="text" id="ghImportApiBase" value="https://github.ibm.com/api/v3" readonly style="background:#f7f8fa;color:#57606a;cursor:default;" />
+      </div>
+      <div class="pr-field-row">
+        <div class="pr-field">
+          <label>Owner</label>
+          <input type="text" id="ghImportOwner" value="A-and-A" readonly style="background:#f7f8fa;color:#57606a;cursor:default;" />
+        </div>
+        <div class="pr-field">
+          <label>Repository</label>
+          <input type="text" id="ghImportRepo" value="S2P-WxO-Agentic" readonly style="background:#f7f8fa;color:#57606a;cursor:default;" />
+        </div>
+      </div>
+
+      <div class="pr-section-label">Branch</div>
+      <div class="pr-field">
+        <label>Import Branch (Source Branch)</label>
+        <input type="text" id="ghImportBranch" value="develop" readonly style="background:#f7f8fa;color:#57606a;cursor:default;font-family:monospace;" />
+        <div class="pr-hint" id="ghImportBranchHint">Fixed to <strong>develop</strong></div>
+      </div>
+
+      <div class="pr-field">
+        <label>Config File</label>
+        <input type="text" id="ghImportFilePath" readonly style="background:#f7f8fa;color:#57606a;cursor:default;font-family:monospace;" />
+        <div class="pr-hint">Determined automatically by the active agent.</div>
+      </div>
+
+      <div class="pr-log" id="ghImportLog"></div>
+      <div class="pr-result" id="ghImportResult"></div>
+    </div>
+    <div class="pr-modal-footer">
+      <span id="ghImportFooterStatus" style="font-size:12px;color:#57606a;flex:1"></span>
+      <button class="btn btn-ghost btn-sm" id="ghImportCancel" style="color:#1f2328;border-color:#d1d5db">Cancel</button>
+      <button class="btn btn-primary" id="ghImportSubmit">Import</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── PR Modal ──────────────────────────────────────────────────────────── -->
+<div class="pr-overlay" id="prOverlay">
+  <div class="pr-modal">
+    <div class="pr-modal-head">
+      <div>
+        <div class="pr-modal-title">Create Pull Request</div>
+        <div class="pr-modal-sub" id="prModalSub">Push changes and open a PR on GitHub</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="prClose" style="color:#57606a;border-color:#d1d5db">✕</button>
+    </div>
+
+    <div class="pr-modal-body" id="prModalBody">
+
+      <!-- ── CORS warning — shown when page is opened via file:// ── -->
+      <div id="prCorsWarn" style="display:none;background:#fffbeb;border:1px solid #fcd34d;color:#92400e;border-radius:6px;padding:10px 13px;font-size:12px;font-weight:500;margin-bottom:14px;line-height:1.6">
+        ⚠️ <strong>CORS restriction detected.</strong> This page is open via <code>file://</code> — browsers block cross-origin API calls from local files.<br>
+        Run the editor from a local HTTP server instead:<br>
+        <code style="background:#fef3c7;padding:2px 6px;border-radius:3px;display:inline-block;margin-top:4px">
+          cd S2P-WxO-Agentic/config &amp;&amp; python3 -m http.server 8080
+        </code><br>
+        then open <code>http://localhost:8080/s2p-app-config-editor.html</code>
+      </div>
+
+      <!-- ── GitHub credentials ── -->
+      <div class="pr-section-label">GitHub Credentials</div>
+
+      <div class="pr-field">
+        <label>Personal Access Token <span>*</span></label>
+        <div class="pr-token-wrap">
+          <input type="password" id="prToken" placeholder="ghp_… or github_pat_…" autocomplete="off" />
+          <button class="pr-token-eye" id="prTokenEye" title="Show / hide token">👁</button>
+        </div>
+        <div class="pr-hint">
+          Needs <code>repo</code> scope.
+          <a href="https://github.com/settings/tokens/new?scopes=repo" target="_blank">Generate one on GitHub</a>
+          &nbsp;|&nbsp;
+          <a href="https://github.ibm.com/settings/tokens/new?scopes=repo" target="_blank">IBM GitHub Enterprise</a>
+        </div>
+      </div>
+
+      <!-- ── Repository ── -->
+      <div class="pr-section-label">Repository</div>
+
+      <div class="pr-field">
+        <label>GitHub API Base URL</label>
+        <input type="text" id="prApiBase" value="https://github.ibm.com/api/v3" placeholder="https://api.github.com  or  https://github.ibm.com/api/v3" readonly style="background:#f7f8fa;color:#57606a;cursor:default;" />
+        <div class="pr-hint">Leave as IBM GHE default or change to <code>https://api.github.com</code> for github.com</div>
+      </div>
+
+      <div class="pr-field-row">
+        <div class="pr-field">
+          <label>Owner</label>
+          <input type="text" id="prOwner" value="A-and-A" placeholder="org or username" readonly style="background:#f7f8fa;color:#57606a;cursor:default;" />
+        </div>
+        <div class="pr-field">
+          <label>Repository</label>
+          <input type="text" id="prRepo" value="S2P-WxO-Agentic" placeholder="repo-name" readonly style="background:#f7f8fa;color:#57606a;cursor:default;" />
+        </div>
+      </div>
+
+      <!-- ── Branches ── -->
+      <div class="pr-section-label">Branches</div>
+
+      <div class="pr-field-row">
+        <div class="pr-field">
+          <label>Base Branch</label>
+          <input type="text" id="prBase" value="json-utility-html" readonly style="background:#f7f8fa;color:#57606a;cursor:default;" />
+          <div class="pr-hint" id="prBaseHint">Fixed to <strong>json-utility-html</strong></div>
+        </div>
+        <div class="pr-field">
+          <label>Head Branch</label>
+          <input type="text" id="prHead" readonly style="background:#f7f8fa;color:#57606a;cursor:default;font-family:monospace;" />
+          <div class="pr-hint">Auto-generated from current date &amp; time</div>
+        </div>
+      </div>
+
+      <!-- ── PR details ── -->
+      <div class="pr-section-label">Pull Request Details</div>
+
+      <div class="pr-field">
+        <label>PR Title <span>*</span></label>
+        <input type="text" id="prTitle" />
+      </div>
+      <div class="pr-field">
+        <label>Description</label>
+        <textarea id="prBody" rows="4"></textarea>
+      </div>
+
+      <!-- ── Progress log ── -->
+      <div class="pr-log" id="prLog"></div>
+      <div class="pr-result" id="prResult"></div>
+    </div>
+
+    <div class="pr-modal-footer">
+      <span id="prFooterStatus" style="font-size:12px;color:#57606a;flex:1"></span>
+      <button class="btn btn-ghost btn-sm" id="prTestConn" style="color:#1f2328;border-color:#d1d5db">Test Connection</button>
+      <button class="btn btn-ghost btn-sm" id="prCancel" style="color:#1f2328;border-color:#d1d5db">Cancel</button>
+      <button class="btn btn-primary" id="prSubmit">Create PR</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">Confirm Action</div>
+    <div class="modal-body" id="modalBody">Are you sure?</div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" style="color:#1f2328;border-color:#d1d5db" id="modalCancel">Cancel</button>
+      <button class="btn btn-danger" id="modalConfirm">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── EMAIL TEMPLATE MODAL ────────────────────────────────────────────────── -->
+<div class="email-overlay" id="emailOverlay">
+  <div class="email-modal">
+    <div class="email-modal-head">
+      <div>
+        <div class="email-modal-title">Email Template</div>
+        <div class="email-modal-sub">Notify reviewers about the PR via your mail client</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="emailClose" style="color:#57606a;border-color:#d1d5db">✕</button>
+    </div>
+    <div class="email-modal-body">
+      <div class="email-field">
+        <label>To</label>
+        <input type="text" id="emailTo" placeholder="reviewer@example.com, another@example.com" />
+        <div class="email-copy-hint">Separate multiple addresses with a comma.</div>
+      </div>
+      <div class="email-field">
+        <label>Subject</label>
+        <input type="text" id="emailSubject" readonly style="background:#f7f8fa;color:#57606a;" />
+      </div>
+      <div class="email-field">
+        <label>Body</label>
+        <textarea id="emailBody" rows="10"></textarea>
+        <div class="email-copy-hint">Edit the template as needed, then click <strong>Open in Mail Client</strong> or copy and paste manually.</div>
+      </div>
+    </div>
+    <div class="email-modal-footer">
+      <button class="btn btn-ghost btn-sm" id="emailCopySubject" style="color:#1f2328;border-color:#d1d5db">Copy Subject</button>
+      <button class="btn btn-ghost btn-sm" id="emailCopyBody" style="color:#1f2328;border-color:#d1d5db">Copy Body</button>
+      <button class="btn btn-ghost btn-sm" id="emailMailto" style="color:#1f2328;border-color:#d1d5db">✉ Open in Mail Client</button>
+      <button class="btn btn-primary" id="emailDone">✉ Done &amp; Send Email</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── HEADER ──────────────────────────────────────────────────────────────── -->
+<div class="header">
+  <div class="header-left">
+    <span class="header-title">S2P App Config Editor</span>
+    <!-- Agent switcher -->
+    <div class="agent-switcher">
+      <button class="agent-btn active" data-agent="intake">Intake Agent</button>
+      <button class="agent-btn" data-agent="sourcing">Sourcing Agent</button>
+    </div>
+    <span class="version-badge" id="headerVersion">v–</span>
+    <div class="unsaved-dot" id="unsavedDot" title="Unsaved changes"></div>
+  </div>
+  <div class="header-actions">
+    <span class="last-updated-info" id="headerLastUpdated"></span>
+    <button class="btn btn-ghost" id="btnImport">Import from GitHub</button>
+    <button class="btn btn-ghost" id="btnPreview">Preview JSON</button>
+    <button class="btn btn-primary" id="btnSave">Save Changes</button>
+  </div>
+</div>
+
+<!-- ── MAIN LAYOUT ─────────────────────────────────────────────────────────── -->
+<div class="layout">
+
+  <!-- SIDEBAR — populated dynamically per agent -->
+  <nav class="sidebar" id="sidebar"></nav>
+
+  <!-- CONTENT — populated dynamically per agent -->
+  <div class="content" id="mainContent"></div>
+
+</div>
+
+<script>
+'use strict';
+
+// ─── Agent registry ──────────────────────────────────────────────────────────
+// Each agent descriptor declares:
+//   file    : filename to fetch / save
+//   label   : human-readable name
+//   tabs    : ordered list of { id, icon, label, section, render }
+//   validate: fn(parsed) → error string | null
+// ─────────────────────────────────────────────────────────────────────────────
+
+const AGENTS = {
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // INTAKE AGENT  →  config_intake.json
+  // ═══════════════════════════════════════════════════════════════════════════
+  intake: {
+    file: 'config_intake.json',
+    label: 'Intake Agent',
+
+    validate(parsed) {
+      for (const k of ['version', 'last_updated', 'feature_flags', 'procurement',
+                       'prompt_config', 'form_config', 'feedback_config']) {
+        if (!(k in parsed)) return `Missing required key: ${k}`;
+      }
+      if (!parsed.form_config?.messages) return 'Missing form_config.messages';
+      if (!parsed.form_config?.fields)   return 'Missing form_config.fields';
+      return null;
+    },
+
+    tabs: [
+      { id: 'overview',    icon: '📋', label: 'Overview',       section: 'General' },
+      { id: 'flags',       icon: '🔧', label: 'Feature Flags',  section: 'General' },
+      { id: 'procurement', icon: '📦', label: 'Procurement',    section: 'Buy Intake' },
+      { id: 'promptcfg',   icon: '🧠', label: 'Prompt Config',  section: 'Buy Intake' },
+      { id: 'formfields',  icon: '📝', label: 'Form Fields',    section: 'Buy Intake' },
+      { id: 'messages',    icon: '💬', label: 'Messages',       section: 'Buy Intake' },
+      { id: 'feedback',    icon: '⭐', label: 'Feedback',       section: 'Buy Intake' },
+    ],
+
+    // ── per-tab render functions ──────────────────────────────────────────────
+    renderOverview(cfg, container) {
+      container.innerHTML = sectionHtml('Overview', 'Top-level metadata for config_intake.json', '') +
+        panelHtml('Config Metadata', `
+          ${fieldRowHtml('Version', '<small>Increment when saving</small>',
+            `<input type="text" id="dyn-version" value="${esc(cfg.version||'')}" />`)}
+          ${fieldRowHtml('Last Updated', '<small>YYYY-MM-DD</small>',
+            `<input type="text" id="dyn-last-updated" value="${esc(cfg.last_updated||'')}" />`)}`);
+
+      bind('#dyn-version', 'input', e => { cfg.version = e.target.value; markDirty(); refreshHeader(); });
+      bind('#dyn-last-updated', 'input', e => { cfg.last_updated = e.target.value; markDirty(); refreshHeader(); });
+    },
+
+    renderFlags(cfg, container) {
+      const ff = cfg.feature_flags || {};
+      container.innerHTML = sectionHtml('Feature Flags', 'On/off toggles for the Intake Agent', '') +
+        maintenanceBannerHtml(ff.maintenance_mode) +
+        panelHtml('feature_flags',
+          flagRowHtml('Buy Intake Enabled',             'flag-buy-intake',  ff.buy_intake_enabled) +
+          flagRowHtml('Non-Buy Routing Enabled',        'flag-nonbuy',       ff.nonbuy_routing_enabled) +
+          flagRowHtml('Enabled',                        'flag-enabled',      ff.enabled) +
+          flagRowHtml('Family Classification Enabled',  'flag-family-cls',   ff.family_classification_enabled) +
+          flagRowHtml('Maintenance Mode', '',            ff.maintenance_mode, '#dc2626', 'Disables the entire app'));
+
+      bindFlag('flag-buy-intake',  v => { ff.buy_intake_enabled = v; });
+      bindFlag('flag-nonbuy',       v => { ff.nonbuy_routing_enabled = v; });
+      bindFlag('flag-enabled',      v => { ff.enabled = v; });
+      bindFlag('flag-family-cls',   v => { ff.family_classification_enabled = v; });
+      bindFlag('flag-maintenance',  v => {
+        ff.maintenance_mode = v;
+        const banner = document.querySelector('.maintenance-banner');
+        if (banner) banner.classList.toggle('visible', v);
+      });
+      // fix id for maintenance (flagRowHtml generates id from label slug)
+      const mEl = document.getElementById('flag-maintenance');
+      if (mEl) {
+        mEl.checked = !!ff.maintenance_mode;
+        // already bound above
+      }
+    },
+
+    renderProcurement(cfg, container) {
+      const proc = cfg.procurement || {};
+      container.innerHTML = sectionHtml('Procurement', 'Active families and keyword-based override rules', '') +
+        panelHtml('Active Families',
+          `<div class="chip-editor" id="chips-active-families"><input class="chip-input" id="chip-input-active-families" placeholder="Add family + Enter" /></div>`) +
+        `<div class="panel">
+          <div class="panel-head">Family Overrides <button class="btn btn-sm btn-primary" id="btnAddOverride">+ Add Override</button></div>
+          <div class="panel-body"><div class="card-list" id="overrideList"></div></div>
+        </div>`;
+
+      renderChips('chips-active-families', proc.active_families || []);
+      initChipEditor('chips-active-families',
+        i => { proc.active_families.splice(i, 1); renderChips('chips-active-families', proc.active_families); markDirty(); },
+        v => { proc.active_families.push(v);       renderChips('chips-active-families', proc.active_families); markDirty(); });
+
+      renderOverrideList(proc);
+
+      bind('#btnAddOverride', 'click', () => {
+        if (!proc.family_overrides) proc.family_overrides = [];
+        proc.family_overrides.push({ name: 'new_override_' + Date.now(), enabled: true, description: '', trigger_keywords: [], action_keywords: [], exception_keywords: [], target_family: 'Unassigned' });
+        renderOverrideList(proc); markDirty();
+      });
+    },
+
+    renderPromptcfg(cfg, container) {
+      const fc = (cfg.prompt_config || {}).family_classifier || {};
+      container.innerHTML = sectionHtml('Prompt Config', 'LLM family classifier behaviour on ambiguous inputs', '') +
+        panelHtml('family_classifier',
+          fieldRowHtml('Ask User on Ambiguous', '',
+            toggleHtml('pc-ask-ambiguous', fc.ask_user_on_ambiguous)) +
+          fieldRowHtml('Max Ambiguous Options', '',
+            `<input type="number" id="pc-max-ambiguous" value="${fc.max_ambiguous_options||3}" min="1" max="10" style="width:100px" />`) +
+          fieldRowHtml('Default on No Match', '',
+            `<input type="text" id="pc-default-no-match" value="${esc(fc.default_on_no_match||'')}" />`));
+
+      bind('#pc-ask-ambiguous',   'change', e => { fc.ask_user_on_ambiguous = e.target.checked; markDirty(); });
+      bind('#pc-max-ambiguous',   'input',  e => { fc.max_ambiguous_options = parseInt(e.target.value)||1; markDirty(); });
+      bind('#pc-default-no-match','input',  e => { fc.default_on_no_match = e.target.value; markDirty(); });
+    },
+
+    renderFormfields(cfg, container) {
+      const fields = (cfg.form_config || {}).fields || {};
+      container.innerHTML = sectionHtml('Form Fields', 'Dropdown options and labels used in the Buy Intake form',
+        `<button class="btn btn-sm btn-primary" id="btnAddField">+ Add Field</button>`);
+      renderFormFieldsList(fields, container);
+
+      bind('#btnAddField', 'click', () => {
+        const key = 'new_field_' + Date.now();
+        fields[key] = { type: 'text', label: 'New Field' };
+        renderFormFieldsList(fields, container);
+        markDirty();
+        showToast('New field added. Rename the key and label.', 'info');
+      });
+    },
+
+    renderMessages(cfg, container) {
+      const messages = (cfg.form_config || {}).messages || {};
+      container.innerHTML = sectionHtml('Messages', 'Chat and UI text strings used by the Intake agent',
+        `<button class="btn btn-sm btn-primary" id="btnAddMessage">+ Add Message</button>`);
+      const wrap = document.createElement('div');
+      wrap.className = 'panel';
+      wrap.innerHTML = '<div class="panel-body" id="messagesList"></div>';
+      container.appendChild(wrap);
+      renderMessagesList(messages);
+
+      bind('#btnAddMessage', 'click', () => {
+        messages['new_message_' + Date.now()] = '';
+        renderMessagesList(messages); markDirty();
+      });
+    },
+
+    renderFeedback(cfg, container) {
+      const fb = cfg.feedback_config || {};
+      const pos = fb.positive_options || {};
+      const neg = fb.negative_options || {};
+      container.innerHTML = sectionHtml('Feedback Config', 'Post-interaction feedback widget settings', '') +
+        panelHtml('Toggles',
+          flagRowHtml('Feedback Enabled',    'fb-is-on',   fb.is_on) +
+          flagRowHtml('Show Positive Details','fb-show-pos', fb.show_positive_details) +
+          flagRowHtml('Show Negative Details','fb-show-neg', fb.show_negative_details)) +
+        panelHtml('Positive Options',
+          `<div class="field-row"><div class="field-label">Categories</div><div class="field-value"><div class="chip-editor" id="chips-pos-categories"><input class="chip-input" id="chip-input-pos-categories" placeholder="Add + Enter" /></div></div></div>` +
+          fieldRowHtml('Disclaimer', '', `<input type="text" id="fb-pos-disclaimer" value="${esc(pos.disclaimer||'')}" />`)) +
+        panelHtml('Negative Options',
+          `<div class="field-row"><div class="field-label">Categories</div><div class="field-value"><div class="chip-editor" id="chips-neg-categories"><input class="chip-input" id="chip-input-neg-categories" placeholder="Add + Enter" /></div></div></div>` +
+          fieldRowHtml('Disclaimer', '', `<input type="text" id="fb-neg-disclaimer" value="${esc(neg.disclaimer||'')}" />`));
+
+      bindFlag('fb-is-on',   v => { fb.is_on = v; });
+      bindFlag('fb-show-pos', v => { fb.show_positive_details = v; });
+      bindFlag('fb-show-neg', v => { fb.show_negative_details = v; });
+      bind('#fb-pos-disclaimer', 'input', e => { pos.disclaimer = e.target.value; markDirty(); });
+      bind('#fb-neg-disclaimer', 'input', e => { neg.disclaimer = e.target.value; markDirty(); });
+
+      renderChips('chips-pos-categories', pos.categories || []);
+      renderChips('chips-neg-categories', neg.categories || []);
+      initChipEditor('chips-pos-categories',
+        i => { pos.categories.splice(i,1); renderChips('chips-pos-categories', pos.categories); markDirty(); },
+        v => { pos.categories.push(v);     renderChips('chips-pos-categories', pos.categories); markDirty(); });
+      initChipEditor('chips-neg-categories',
+        i => { neg.categories.splice(i,1); renderChips('chips-neg-categories', neg.categories); markDirty(); },
+        v => { neg.categories.push(v);     renderChips('chips-neg-categories', neg.categories); markDirty(); });
+    },
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SOURCING AGENT  →  config_sourcing_intent.json
+  // ═══════════════════════════════════════════════════════════════════════════
+  sourcing: {
+    file: 'config_sourcing_intent.json',
+    label: 'Sourcing Agent',
+
+    validate(parsed) {
+      for (const k of ['version', 'last_updated', 'feature_flags', 'config', 'llm_config']) {
+        if (!(k in parsed)) return `Missing required key: ${k}`;
+      }
+      if (!parsed.config?.intents)        return 'Missing config.intents';
+      if (!parsed.config?.unclear_intent) return 'Missing config.unclear_intent';
+      if (!parsed.config?.messages)       return 'Missing config.messages';
+      return null;
+    },
+
+    tabs: [
+      { id: 'overview',      icon: '📋', label: 'Overview',        section: 'General' },
+      { id: 'flags',         icon: '🔧', label: 'Feature Flags',   section: 'General' },
+      { id: 'intents',       icon: '🎯', label: 'Intents',         section: 'Sourcing' },
+      { id: 'unclearintent', icon: '❓', label: 'Unclear Intent',  section: 'Sourcing' },
+      { id: 'llmconfig',     icon: '⚙️', label: 'LLM Config',      section: 'Sourcing' },
+      { id: 'toolconfig',    icon: '🛠️', label: 'Tool Config',     section: 'Sourcing' },
+    ],
+
+    renderOverview(cfg, container) {
+      container.innerHTML = sectionHtml('Overview', 'Top-level metadata for config_sourcing_intent.json', '') +
+        panelHtml('Config Metadata', `
+          ${fieldRowHtml('Version', '<small>Increment when saving</small>',
+            `<input type="text" id="dyn-version" value="${esc(cfg.version||'')}" />`)}
+          ${fieldRowHtml('Last Updated', '<small>YYYY-MM-DD</small>',
+            `<input type="text" id="dyn-last-updated" value="${esc(cfg.last_updated||'')}" />`)}`);
+
+      bind('#dyn-version',      'input', e => { cfg.version      = e.target.value; markDirty(); refreshHeader(); });
+      bind('#dyn-last-updated', 'input', e => { cfg.last_updated = e.target.value; markDirty(); refreshHeader(); });
+    },
+
+    renderFlags(cfg, container) {
+      const ff = cfg.feature_flags || {};
+      container.innerHTML = sectionHtml('Feature Flags', 'On/off toggles for the Sourcing Agent', '') +
+        maintenanceBannerHtml(ff.maintenance_mode) +
+        panelHtml('feature_flags',
+          flagRowHtml('Sourcing Support Enabled', 'flag-sourcing-support', ff.sourcing_support_enabled) +
+          flagRowHtml('Non-Buy Routing Enabled',  'flag-nonbuy',           ff.nonbuy_routing_enabled) +
+          flagRowHtml('Maintenance Mode', '',      ff.maintenance_mode, '#dc2626', 'Disables the entire app'));
+
+      bindFlag('flag-sourcing-support', v => { ff.sourcing_support_enabled = v; });
+      bindFlag('flag-nonbuy',            v => { ff.nonbuy_routing_enabled = v; });
+      bindFlag('flag-maintenance',       v => {
+        ff.maintenance_mode = v;
+        const banner = document.querySelector('.maintenance-banner');
+        if (banner) banner.classList.toggle('visible', v);
+      });
+      const mEl = document.getElementById('flag-maintenance');
+      if (mEl) mEl.checked = !!ff.maintenance_mode;
+    },
+
+    renderIntents(cfg, container) {
+      const intents = (cfg.config || {}).intents || {};
+      container.innerHTML = sectionHtml('Sourcing Intents',
+        'Routing destinations classified by the Sourcing agent',
+        `<button class="btn btn-sm btn-primary" id="btnAddIntent">+ Add Intent</button>`);
+      renderIntentsList(intents, container);
+
+      bind('#btnAddIntent', 'click', () => {
+        const key = 'new_intent_' + Date.now();
+        intents[key] = { display_name: 'New Intent', message: '', contact_person_name: '', contact_person_email: '', ticketing_process_link: '', support_item_title: '', support_item_link: '', criteria: '', sample_questions: [] };
+        renderIntentsList(intents, container); markDirty();
+      });
+    },
+
+    renderUnclearintent(cfg, container) {
+      const ui   = (cfg.config || {}).unclear_intent || {};
+      const msgs = (cfg.config || {}).messages || {};
+      container.innerHTML = sectionHtml('Unclear Intent Fallback',
+        'Shown when the LLM cannot classify a sourcing request', '') +
+        panelHtml('Fallback Configuration',
+          fieldRowHtml('Fallback Message', '',
+            `<textarea id="ui-message" rows="4">${esc(ui.message||'')}</textarea>`) +
+          `<div class="field-row"><div class="field-label">Supported Categories</div><div class="field-value"><div class="chip-editor" id="chips-supported-cats"><input class="chip-input" id="chip-input-supported-cats" placeholder="Add + Enter" /></div></div></div>` +
+          fieldRowHtml('General Contact Email', '',
+            `<input type="text" id="ui-contact-email" value="${esc(ui.general_contact_email||'')}" />`) +
+          fieldRowHtml('General Support Link', '',
+            `<input type="text" id="ui-support-link" value="${esc(ui.general_support_link||'')}" />`)) +
+        panelHtml('Sourcing Messages',
+          fieldRowHtml('Welcome Message', '',
+            `<textarea id="ss-welcome" rows="2">${esc(msgs.welcome||'')}</textarea>`) +
+          fieldRowHtml('Error Message', '',
+            `<textarea id="ss-error" rows="2">${esc(msgs.error||'')}</textarea>`) +
+          fieldRowHtml('Internal Error Message', '',
+            `<textarea id="ss-internal-error" rows="2">${esc(msgs.internal_error||'')}</textarea>`));
+
+      bind('#ui-message',        'input', e => { ui.message                = e.target.value; markDirty(); });
+      bind('#ui-contact-email',  'input', e => { ui.general_contact_email  = e.target.value; markDirty(); });
+      bind('#ui-support-link',   'input', e => { ui.general_support_link   = e.target.value; markDirty(); });
+      bind('#ss-welcome',        'input', e => { msgs.welcome              = e.target.value; markDirty(); });
+      bind('#ss-error',          'input', e => { msgs.error                = e.target.value; markDirty(); });
+      bind('#ss-internal-error', 'input', e => { msgs.internal_error       = e.target.value; markDirty(); });
+
+      renderChips('chips-supported-cats', ui.supported_categories || []);
+      initChipEditor('chips-supported-cats',
+        i => { ui.supported_categories.splice(i,1); renderChips('chips-supported-cats', ui.supported_categories); markDirty(); },
+        v => { ui.supported_categories.push(v);     renderChips('chips-supported-cats', ui.supported_categories); markDirty(); });
+    },
+
+    renderLlmconfig(cfg, container) {
+      const lc  = cfg.llm_config || {};
+      const val = lc.confidence_threshold !== undefined ? lc.confidence_threshold : 0.7;
+      container.innerHTML = sectionHtml('LLM Config', 'Confidence threshold for intent classification', '') +
+        panelHtml('llm_config',
+          fieldRowHtml('Confidence Threshold',
+            '<small>Below this → unclear_intent fallback</small>',
+            `<div class="slider-wrap">
+              <input type="range" id="llm-threshold" min="0" max="1" step="0.05" value="${val}" />
+              <span class="slider-value" id="llm-threshold-val">${val.toFixed(2)}</span>
+            </div>
+            <div style="font-size:11px;color:#57606a;margin-top:4px">Range: 0.00 – 1.00 &nbsp;|&nbsp; Recommended: 0.65 – 0.80</div>`));
+
+      bind('#llm-threshold', 'input', e => {
+        const v = parseFloat(e.target.value);
+        lc.confidence_threshold = v;
+        document.getElementById('llm-threshold-val').textContent = v.toFixed(2);
+        markDirty();
+      });
+    },
+
+    renderToolconfig(cfg, container) {
+      const tc  = cfg.tool_config || {};
+      const pr  = tc.pr_tool || {};
+      container.innerHTML = sectionHtml('Tool Config', 'Runtime limits for tools used by the Sourcing agent', '') +
+        panelHtml('pr_tool',
+          fieldRowHtml('Max PRs to Display', '',
+            `<input type="number" id="tc-max-prs" value="${pr.max_prs_to_display||10}" min="1" max="100" style="width:100px" />`) +
+          fieldRowHtml('Max Lookback Days', '',
+            `<input type="number" id="tc-max-days" value="${pr.max_lookback_days||90}" min="1" max="365" style="width:100px" />`));
+
+      if (!tc.pr_tool) tc.pr_tool = pr;
+      bind('#tc-max-prs',  'input', e => { pr.max_prs_to_display = parseInt(e.target.value)||10; markDirty(); });
+      bind('#tc-max-days', 'input', e => { pr.max_lookback_days   = parseInt(e.target.value)||90; markDirty(); });
+    },
+  },
+};
+
+// ─── State ───────────────────────────────────────────────────────────────────
+let activeAgent = 'intake';      // 'intake' | 'sourcing'
+let configs     = { intake: null, sourcing: null };
+let activeTab   = 'overview';
+let hasUnsavedChanges = false;
+let confirmCallback   = null;
+let configImported    = { intake: false, sourcing: false }; // true only after a real GitHub import
+
+// ─── Utility helpers ─────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/**
+ * Serialize cfg to JSON with the same Unicode escaping as Python's
+ * json.dumps(ensure_ascii=True).  Every non-ASCII code-point becomes \uXXXX
+ * so the saved file is byte-for-byte identical to the original source file
+ * and characters like — (\u2014) or smart-quotes are never stored as raw
+ * multi-byte UTF-8 sequences.
+ */
+function toAsciiJson(obj) {
+  return JSON.stringify(obj, null, 4)
+    .replace(/[^\x00-\x7F]/g, ch => {
+      const cp = ch.codePointAt(0);
+      return cp > 0xFFFF
+        ? '\\u' + ((cp - 0x10000 >> 10) + 0xD800).toString(16).padStart(4, '0') +
+          '\\u' + ((cp - 0x10000 & 0x3FF) + 0xDC00).toString(16).padStart(4, '0')
+        : '\\u' + cp.toString(16).padStart(4, '0');
+    });
+}
+
+function bind(selector, event, handler) {
+  const el = (typeof selector === 'string') ? document.querySelector(selector) : selector;
+  if (el) el.addEventListener(event, handler);
+}
+
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className   = 'toast ' + type;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+function markDirty() {
+  hasUnsavedChanges = true;
+  document.getElementById('unsavedDot').classList.add('visible');
+}
+function markClean() {
+  hasUnsavedChanges = false;
+  document.getElementById('unsavedDot').classList.remove('visible');
+}
+
+function setSaveEnabled(enabled) {
+  const btn = document.getElementById('btnSave');
+  btn.disabled = !enabled;
+  btn.title    = enabled ? '' : 'Import the config from GitHub first before saving changes.';
+  btn.style.opacity = enabled ? '' : '0.45';
+  btn.style.cursor  = enabled ? '' : 'not-allowed';
+}
+
+function confirmDlg(title, body, cb) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').textContent  = body;
+  document.getElementById('confirmModal').classList.add('open');
+  confirmCallback = cb;
+}
+
+function refreshHeader() {
+  const cfg = configs[activeAgent];
+  if (!cfg) return;
+  document.getElementById('headerVersion').textContent     = 'v' + (cfg.version || '?');
+  document.getElementById('headerLastUpdated').textContent = cfg.last_updated ? 'Updated ' + cfg.last_updated : '';
+}
+
+// ─── HTML snippet helpers ─────────────────────────────────────────────────────
+function sectionHtml(title, sub, actionHtml) {
+  return `<div class="section-header">
+    <div><div class="section-title">${esc(title)}</div><div class="section-sub">${esc(sub)}</div></div>
+    ${actionHtml}
+  </div>`;
+}
+
+function panelHtml(heading, bodyHtml) {
+  return `<div class="panel">
+    <div class="panel-head">${esc(heading)}</div>
+    <div class="panel-body">${bodyHtml}</div>
+  </div>`;
+}
+
+function fieldRowHtml(label, metaHtml, inputHtml) {
+  return `<div class="field-row">
+    <div class="field-label">${esc(label)}${metaHtml}</div>
+    <div class="field-value">${inputHtml}</div>
+  </div>`;
+}
+
+function toggleHtml(id, checked) {
+  return `<label class="toggle"><input type="checkbox" id="${id}" ${checked ? 'checked' : ''} /><span class="slider"></span></label>`;
+}
+
+function flagRowHtml(label, id, checked, color, note) {
+  // Auto-generate id from label if not provided
+  const elId = id || 'flag-' + label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  const noteHtml = note ? `<small style="color:${color||'#57606a'}">${esc(note)}</small>` : '';
+  return `<div class="field-row">
+    <div class="field-label">${esc(label)}${noteHtml}</div>
+    <div class="field-value">${toggleHtml(elId, checked)}</div>
+  </div>`;
+}
+
+function maintenanceBannerHtml(on) {
+  return `<div class="maintenance-banner${on ? ' visible' : ''}">⚠️ Maintenance Mode is ON — the application is currently inaccessible to users.</div>`;
+}
+
+// ─── bindFlag helper ─────────────────────────────────────────────────────────
+function bindFlag(id, setter) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('change', e => { setter(e.target.checked); markDirty(); });
+}
+
+// ─── Chip editor ─────────────────────────────────────────────────────────────
+function renderChips(containerId, values) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  Array.from(container.querySelectorAll('.chip')).forEach(c => c.remove());
+  const input = container.querySelector('.chip-input');
+  values.forEach((v, i) => {
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.innerHTML = `${esc(v)}<button class="chip-remove" data-index="${i}" title="Remove">&times;</button>`;
+    container.insertBefore(chip, input);
+  });
+}
+
+function initChipEditor(containerId, onRemove, onAdd) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.addEventListener('click', e => {
+    if (e.target.classList.contains('chip-remove'))
+      onRemove(parseInt(e.target.dataset.index));
+  });
+  const input = container.querySelector('.chip-input');
+  if (!input) return;
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const val = input.value.trim().replace(/,$/, '');
+      if (val) { onAdd(val); input.value = ''; }
+    }
+  });
+}
+
+// ─── Override list (Intake → Procurement tab) ────────────────────────────────
+function renderOverrideList(proc) {
+  const list = document.getElementById('overrideList');
+  if (!list) return;
+  list.innerHTML = '';
+
+  const overrideKeys = Object.keys(proc).filter(k => k !== 'active_families' && Array.isArray(proc[k]));
+  if (overrideKeys.length === 0) {
+    list.innerHTML = '<div class="empty-state">No override groups found.</div>';
+    return;
+  }
+
+  overrideKeys.forEach(groupKey => {
+    const overrides = proc[groupKey];
+    const header = document.createElement('div');
+    header.style.cssText = 'font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#57606a;padding:8px 0 6px;border-bottom:1px solid #e5e7eb;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center';
+    header.innerHTML = `<span>${esc(groupKey)}</span><span style="font-weight:400;color:#9ca3af">${overrides.length} rule${overrides.length !== 1 ? 's' : ''}</span>`;
+    list.appendChild(header);
+
+    overrides.forEach((ov, idx) => {
+      const uid  = `${groupKey}-${idx}`;
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.style.marginBottom = '8px';
+      card.innerHTML = `
+        <div class="card-head">
+          <span>${esc(ov.name)}</span>
+          <div style="display:flex;gap:8px;align-items:center">
+            <label class="toggle"><input type="checkbox" class="ov-enabled" data-group="${esc(groupKey)}" data-idx="${idx}" ${ov.enabled ? 'checked' : ''}><span class="slider"></span></label>
+            <button class="btn btn-sm btn-danger ov-del" data-group="${esc(groupKey)}" data-idx="${idx}">Delete</button>
+          </div>
+        </div>
+        <div class="card-body"><div class="card-grid">
+          <div class="card-field full"><label>Rule Name</label><input type="text" class="ov-name" data-group="${esc(groupKey)}" data-idx="${idx}" value="${esc(ov.name)}" /></div>
+          <div class="card-field full"><label>Description</label><input type="text" class="ov-desc" data-group="${esc(groupKey)}" data-idx="${idx}" value="${esc(ov.description)}" /></div>
+          <div class="card-field full"><label>Target Family</label><input type="text" class="ov-target" data-group="${esc(groupKey)}" data-idx="${idx}" value="${esc(ov.target_family)}" /></div>
+          <div class="card-field"><label>Trigger Keywords</label><div class="chip-editor" id="chips-ov-trigger-${uid}"><input class="chip-input" id="chip-input-ov-trigger-${uid}" placeholder="Add + Enter"></div></div>
+          <div class="card-field"><label>Action Keywords</label><div class="chip-editor" id="chips-ov-action-${uid}"><input class="chip-input" id="chip-input-ov-action-${uid}" placeholder="Add + Enter"></div></div>
+          <div class="card-field full"><label>Exception Keywords</label><div class="chip-editor" id="chips-ov-exception-${uid}"><input class="chip-input" id="chip-input-ov-exception-${uid}" placeholder="Add + Enter"></div></div>
+        </div></div>`;
+      list.appendChild(card);
+
+      renderChips(`chips-ov-trigger-${uid}`,   ov.trigger_keywords   || []);
+      renderChips(`chips-ov-action-${uid}`,    ov.action_keywords    || []);
+      renderChips(`chips-ov-exception-${uid}`, ov.exception_keywords || []);
+
+      [['trigger_keywords',   `chips-ov-trigger-${uid}`],
+       ['action_keywords',    `chips-ov-action-${uid}`],
+       ['exception_keywords', `chips-ov-exception-${uid}`]].forEach(([field, cid]) => {
+        initChipEditor(cid,
+          i => { ov[field].splice(i, 1); renderChips(cid, ov[field]); markDirty(); },
+          v => { ov[field].push(v);      renderChips(cid, ov[field]); markDirty(); });
+      });
+    });
+
+    const spacer = document.createElement('div');
+    spacer.style.height = '12px';
+    list.appendChild(spacer);
+  });
+
+  // Event delegation for text / toggle / delete
+  list.querySelectorAll('.ov-name').forEach(el => el.addEventListener('input', e => {
+    const cfg = configs[activeAgent];
+    cfg.procurement[e.target.dataset.group][e.target.dataset.idx].name = e.target.value; markDirty();
+  }));
+  list.querySelectorAll('.ov-desc').forEach(el => el.addEventListener('input', e => {
+    const cfg = configs[activeAgent];
+    cfg.procurement[e.target.dataset.group][e.target.dataset.idx].description = e.target.value; markDirty();
+  }));
+  list.querySelectorAll('.ov-target').forEach(el => el.addEventListener('input', e => {
+    const cfg = configs[activeAgent];
+    cfg.procurement[e.target.dataset.group][e.target.dataset.idx].target_family = e.target.value; markDirty();
+  }));
+  list.querySelectorAll('.ov-enabled').forEach(el => el.addEventListener('change', e => {
+    const cfg = configs[activeAgent];
+    cfg.procurement[e.target.dataset.group][e.target.dataset.idx].enabled = e.target.checked; markDirty();
+  }));
+  list.querySelectorAll('.ov-del').forEach(el => el.addEventListener('click', e => {
+    const { group, idx } = e.target.dataset;
+    const cfg  = configs[activeAgent];
+    const name = cfg.procurement[group][idx].name;
+    confirmDlg('Delete Override', `Delete override "${name}" from "${group}"?`, () => {
+      cfg.procurement[group].splice(parseInt(idx), 1);
+      renderOverrideList(cfg.procurement); markDirty();
+    });
+  }));
+}
+
+// ─── Form fields list (Intake → Form Fields tab) ─────────────────────────────
+function renderFormFieldsList(fields, container) {
+  // Remove any previously rendered panels (keep section-header)
+  container.querySelectorAll('.panel').forEach(p => p.remove());
+
+  Object.entries(fields).forEach(([key, field]) => {
+    const isDD = field.type === 'dropdown';
+    const panel = document.createElement('div');
+    panel.className = 'panel';
+    panel.innerHTML = `
+      <div class="panel-head">
+        <span>${esc(key)}</span>
+        <button class="btn btn-sm btn-danger ff-del" data-key="${esc(key)}">Delete</button>
+      </div>
+      <div class="panel-body">
+        <div class="field-row"><div class="field-label">Field Key</div><div class="field-value"><input type="text" class="ff-key" data-key="${esc(key)}" value="${esc(key)}" /></div></div>
+        <div class="field-row"><div class="field-label">Label</div><div class="field-value"><input type="text" class="ff-label" data-key="${esc(key)}" value="${esc(field.label||'')}" /></div></div>
+        <div class="field-row"><div class="field-label">Type</div><div class="field-value">
+          <select class="ff-type" data-key="${esc(key)}">
+            <option value="dropdown" ${isDD ? 'selected' : ''}>dropdown</option>
+            <option value="text"     ${field.type === 'text'   ? 'selected' : ''}>text</option>
+            <option value="number"   ${field.type === 'number' ? 'selected' : ''}>number</option>
+          </select>
+        </div></div>
+        ${isDD ? `<div class="field-row"><div class="field-label">Values</div><div class="field-value"><div class="chip-editor" id="chips-ff-${esc(key)}"><input class="chip-input" id="chip-input-ff-${esc(key)}" placeholder="Add value + Enter"></div></div></div>` : ''}
+      </div>`;
+    container.appendChild(panel);
+
+    if (isDD && field.values) {
+      renderChips(`chips-ff-${key}`, field.values);
+      initChipEditor(`chips-ff-${key}`,
+        i => { field.values.splice(i, 1); renderChips(`chips-ff-${key}`, field.values); markDirty(); },
+        v => { field.values.push(v);      renderChips(`chips-ff-${key}`, field.values); markDirty(); });
+    }
+  });
+
+  container.querySelectorAll('.ff-del').forEach(btn => btn.addEventListener('click', e => {
+    const k = e.target.dataset.key;
+    confirmDlg('Delete Field', `Delete field "${k}"?`, () => {
+      delete fields[k];
+      renderFormFieldsList(fields, container); markDirty();
+    });
+  }));
+  container.querySelectorAll('.ff-label').forEach(el => el.addEventListener('input', e => {
+    fields[e.target.dataset.key].label = e.target.value; markDirty();
+  }));
+  container.querySelectorAll('.ff-type').forEach(el => el.addEventListener('change', e => {
+    const k = e.target.dataset.key;
+    fields[k].type = e.target.value;
+    if (e.target.value !== 'dropdown') delete fields[k].values;
+    else fields[k].values = fields[k].values || [];
+    renderFormFieldsList(fields, container); markDirty();
+  }));
+}
+
+// ─── Messages list (Intake → Messages tab) ───────────────────────────────────
+function renderMessagesList(messages) {
+  const container = document.getElementById('messagesList');
+  if (!container) return;
+  container.innerHTML = '';
+  Object.entries(messages).forEach(([key, val]) => {
+    const row = document.createElement('div');
+    row.className = 'field-row';
+    row.innerHTML = `
+      <div class="field-label">${esc(key)}
+        <button class="btn btn-sm btn-danger msg-del" data-key="${esc(key)}" style="margin-top:4px">Delete</button>
+      </div>
+      <div class="field-value"><textarea class="msg-val" data-key="${esc(key)}" rows="3">${esc(val)}</textarea></div>`;
+    container.appendChild(row);
+  });
+  container.querySelectorAll('.msg-val').forEach(el => el.addEventListener('input', e => {
+    messages[e.target.dataset.key] = e.target.value; markDirty();
+  }));
+  container.querySelectorAll('.msg-del').forEach(btn => btn.addEventListener('click', e => {
+    const k = e.target.dataset.key;
+    confirmDlg('Delete Message', `Delete message "${k}"?`, () => {
+      delete messages[k];
+      renderMessagesList(messages); markDirty();
+    });
+  }));
+}
+
+// ─── Intents list (Sourcing → Intents tab) ───────────────────────────────────
+function renderIntentsList(intents, container) {
+  // Remove any previously rendered cards (keep section-header)
+  container.querySelectorAll('.card-list').forEach(el => el.remove());
+
+  const list = document.createElement('div');
+  list.className = 'card-list';
+  container.appendChild(list);
+
+  Object.entries(intents).forEach(([key, intent]) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="card-head">
+        <span>${esc(intent.display_name || key)}</span>
+        <button class="btn btn-sm btn-danger intent-del" data-key="${esc(key)}">Delete</button>
+      </div>
+      <div class="card-body"><div class="card-grid">
+        <div class="card-field full"><label>Intent Key</label><input type="text" class="intent-key-field" data-key="${esc(key)}" value="${esc(key)}" /></div>
+        <div class="card-field"><label>Display Name</label><input type="text" class="intent-f" data-key="${esc(key)}" data-field="display_name" value="${esc(intent.display_name||'')}" /></div>
+        <div class="card-field"><label>Contact Name</label><input type="text" class="intent-f" data-key="${esc(key)}" data-field="contact_person_name" value="${esc(intent.contact_person_name||'')}" /></div>
+        <div class="card-field"><label>Contact Email</label><input type="text" class="intent-f" data-key="${esc(key)}" data-field="contact_person_email" value="${esc(intent.contact_person_email||'')}" /></div>
+        <div class="card-field"><label>Support Item Title</label><input type="text" class="intent-f" data-key="${esc(key)}" data-field="support_item_title" value="${esc(intent.support_item_title||'')}" /></div>
+        <div class="card-field full"><label>Message</label><textarea class="intent-f" data-key="${esc(key)}" data-field="message" rows="3">${esc(intent.message||'')}</textarea></div>
+        <div class="card-field full"><label>Ticketing Process Link</label><input type="text" class="intent-f" data-key="${esc(key)}" data-field="ticketing_process_link" value="${esc(intent.ticketing_process_link||'')}" /></div>
+        <div class="card-field full"><label>Support Item Link</label><input type="text" class="intent-f" data-key="${esc(key)}" data-field="support_item_link" value="${esc(intent.support_item_link||'')}" /></div>
+        <div class="card-field full"><label>Criteria</label><input type="text" class="intent-f" data-key="${esc(key)}" data-field="criteria" value="${esc(intent.criteria||'')}" /></div>
+        <div class="card-field full"><label>Sample Questions</label>
+          <div class="chip-editor" id="chips-intent-sq-${esc(key)}">
+            <input class="chip-input" id="chip-input-intent-sq-${esc(key)}" placeholder="Add question + Enter">
+          </div>
+        </div>
+      </div></div>`;
+    list.appendChild(card);
+
+    renderChips(`chips-intent-sq-${key}`, intent.sample_questions || []);
+    initChipEditor(`chips-intent-sq-${key}`,
+      i => { intent.sample_questions.splice(i, 1); renderChips(`chips-intent-sq-${key}`, intent.sample_questions); markDirty(); },
+      v => { intent.sample_questions.push(v);       renderChips(`chips-intent-sq-${key}`, intent.sample_questions); markDirty(); });
+  });
+
+  list.querySelectorAll('.intent-f').forEach(el => el.addEventListener('input', e => {
+    intents[e.target.dataset.key][e.target.dataset.field] = e.target.value; markDirty();
+  }));
+  list.querySelectorAll('.intent-del').forEach(btn => btn.addEventListener('click', e => {
+    const k = e.target.dataset.key;
+    confirmDlg('Delete Intent', `Delete intent "${k}"?`, () => {
+      delete intents[k];
+      renderIntentsList(intents, container); markDirty();
+    });
+  }));
+}
+
+// ─── Sidebar builder ─────────────────────────────────────────────────────────
+function buildSidebar(agentKey) {
+  const sidebar = document.getElementById('sidebar');
+  sidebar.innerHTML = '';
+  const agent  = AGENTS[agentKey];
+  let lastSection = null;
+
+  agent.tabs.forEach(tab => {
+    if (tab.section !== lastSection) {
+      const sec = document.createElement('div');
+      sec.className = 'sidebar-section';
+      sec.textContent = tab.section;
+      sidebar.appendChild(sec);
+      lastSection = tab.section;
+    }
+    const link = document.createElement('a');
+    link.className = 'nav-item' + (tab.id === activeTab ? ' active' : '');
+    link.dataset.tab = tab.id;
+    link.textContent = `${tab.icon} ${tab.label}`;
+    link.addEventListener('click', () => switchTab(tab.id));
+    sidebar.appendChild(link);
+  });
+}
+
+// ─── Tab rendering dispatcher ─────────────────────────────────────────────────
+function switchTab(tabId) {
+  activeTab = tabId;
+  document.querySelectorAll('.nav-item').forEach(n =>
+    n.classList.toggle('active', n.dataset.tab === tabId));
+
+  const cfg        = configs[activeAgent];
+  const agent      = AGENTS[activeAgent];
+  const container  = document.getElementById('mainContent');
+  const renderFn   = agent['render' + tabId.charAt(0).toUpperCase() + tabId.slice(1)];
+
+  container.innerHTML = '';
+
+  // Agent banner showing which file is being edited
+  const banner = document.createElement('div');
+  banner.className = 'agent-banner';
+  banner.innerHTML = `<div class="dot"></div><span>Editing <strong>${agent.label}</strong> — <code>${agent.file}</code></span>`;
+  container.appendChild(banner);
+
+  if (renderFn) {
+    renderFn.call(agent, cfg, container);
+  } else {
+    container.innerHTML += `<div class="empty-state">Tab renderer not found for "${tabId}".</div>`;
+  }
+}
+
+// ─── Agent switching ──────────────────────────────────────────────────────────
+async function switchAgent(agentKey) {
+  if (agentKey === activeAgent) return;
+
+  activeAgent = agentKey;
+  activeTab   = 'overview';
+
+  document.querySelectorAll('.agent-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.agent === agentKey));
+
+  if (!configs[agentKey]) {
+    await loadConfig(agentKey);
+  } else {
+    buildSidebar(agentKey);
+    refreshHeader();
+    switchTab('overview');
+    markClean();
+    setSaveEnabled(configImported[agentKey]);
+  }
+}
+
+// ─── Config loader ────────────────────────────────────────────────────────────
+async function loadConfig(agentKey) {
+  const agent   = AGENTS[agentKey];
+  const filePath = `config/${agent.file}`;
+  activeTab = 'overview';   // always start on Overview when loading/reloading a config
+
+  // Try GitHub first if a token is available
+  const token   = document.getElementById('prToken').value.trim() ||
+                  document.getElementById('ghImportToken').value.trim();
+  const apiBase = document.getElementById('prApiBase').value.trim().replace(/\/$/, '');
+  const owner   = document.getElementById('prOwner').value.trim();
+  const repo    = document.getElementById('prRepo').value.trim();
+
+  if (token && location.protocol !== 'file:') {
+    try {
+      // Use the repo default branch
+      const repoData     = await ghFetch(apiBase, token, `${owner}/${repo}`);
+      const defaultBranch = repoData.default_branch || 'main';
+      const fileData     = await ghFetch(apiBase, token,
+        `${owner}/${repo}/contents/${filePath}?ref=${encodeURIComponent(defaultBranch)}`);
+      const rawJson = decodeURIComponent(escape(atob(fileData.content.replace(/\n/g, ''))));
+      configs[agentKey] = JSON.parse(rawJson);
+      showToast(`Loaded ${filePath} from GitHub (${defaultBranch})`, 'success');
+      buildSidebar(agentKey); refreshHeader(); switchTab('overview'); markClean();
+      return;
+    } catch (_) {
+      // Fall through to skeleton fallback
+    }
+  }
+
+  // Fallback: provide a minimal skeleton so the editor can still open
+  configImported[agentKey] = false;
+  setSaveEnabled(false);
+  configs[agentKey] = agentKey === 'intake'
+    ? { version: '1.0', last_updated: new Date().toISOString().split('T')[0], feature_flags: { buy_intake_enabled: true, nonbuy_routing_enabled: true, maintenance_mode: false, enabled: true, family_classification_enabled: true }, procurement: { active_families: [], family_overrides: [] }, prompt_config: { family_classifier: { ask_user_on_ambiguous: true, max_ambiguous_options: 3, default_on_no_match: 'Unassigned' } }, form_config: { messages: {}, fields: {} }, feedback_config: { is_on: true, show_positive_details: true, show_negative_details: true, positive_options: { categories: [], disclaimer: '' }, negative_options: { categories: [], disclaimer: '' } } }
+    : { version: '1.0', last_updated: new Date().toISOString().split('T')[0], feature_flags: { sourcing_support_enabled: true, nonbuy_routing_enabled: true, maintenance_mode: false }, config: { intents: {}, unclear_intent: { message: '', supported_categories: [], general_contact_email: '', general_support_link: '' }, messages: { welcome: '', error: '', internal_error: '' } }, llm_config: { confidence_threshold: 0.7 }, tool_config: { pr_tool: { max_prs_to_display: 10, max_lookback_days: 90 } } };
+  showToast(`No token set — using empty skeleton. Use "Import from GitHub" to load the live config.`, 'info');
+
+  buildSidebar(agentKey);
+  refreshHeader();
+  switchTab('overview');
+  markClean();
+}
+
+// ─── Save + open PR flow ──────────────────────────────────────────────────────
+document.getElementById('btnSave').addEventListener('click', () => {
+  const cfg   = configs[activeAgent];
+  const agent = AGENTS[activeAgent];
+  const today = new Date().toISOString().split('T')[0];
+  cfg.last_updated = today;
+  refreshHeader();
+
+  // 1. Download local copy
+  const json = toAsciiJson(cfg);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = agent.file; a.click();
+  URL.revokeObjectURL(url);
+  markClean();
+  showToast(`${agent.file} downloaded.`, 'success');
+
+  // 2. Open the PR modal pre-filled for this agent
+  openPRModal(agent, json);
+});
+
+// ─── PR Modal ────────────────────────────────────────────────────────────────
+
+/** Pre-fill defaults and open the PR modal */
+function openPRModal(agent, jsonContent) {
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const stamp =
+    `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}-` +
+    `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  const headBranch = `json-update-${stamp}`;
+  const today      = now.toISOString().split('T')[0];
+  const prTitle    = `[Config] Update ${agent.file} — ${today}`;
+  const prBodyText =
+    `## Config Update\n\n` +
+    `**Agent:** ${agent.label}\n` +
+    `**File:** \`config/${agent.file}\`\n` +
+    `**Updated:** ${today}\n\n` +
+    `### Changes\n` +
+    `<!-- Describe what was changed and why -->\n\n` +
+    `---\n_Generated by S2P App Config Editor_`;
+
+  document.getElementById('prHead').value  = headBranch;
+  document.getElementById('prTitle').value = prTitle;
+  document.getElementById('prBody').value  = prBodyText;
+  document.getElementById('prModalSub').textContent = `Pushing changes to ${agent.file}`;
+
+  // Reset log / result areas
+  const log    = document.getElementById('prLog');
+  const result = document.getElementById('prResult');
+  log.innerHTML = ''; log.classList.remove('visible');
+  result.innerHTML = ''; result.classList.remove('visible', 'success', 'error');
+
+  // Reset footer
+  document.getElementById('prFooterStatus').textContent = '';
+  document.getElementById('prSubmit').disabled = false;
+  document.getElementById('prSubmit').textContent = 'Create PR';
+  document.getElementById('prCancel').style.display = '';
+
+  // Store the JSON to push
+  document.getElementById('prOverlay')._jsonContent = jsonContent;
+  document.getElementById('prOverlay')._agentFile   = `config/${agent.file}`;
+
+  document.getElementById('prOverlay').classList.add('open');
+
+  // Show CORS warning if on file://
+  checkCorsWarning();
+}
+
+// Token show/hide
+document.getElementById('prTokenEye').addEventListener('click', () => {
+  const inp = document.getElementById('prToken');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+});
+
+// Close modal
+['prClose', 'prCancel'].forEach(id =>
+  document.getElementById(id).addEventListener('click', () =>
+    document.getElementById('prOverlay').classList.remove('open')));
+
+// ── CORS banner: show when page is served from file:// ──────────────────────
+function checkCorsWarning() {
+  if (location.protocol === 'file:') {
+    document.getElementById('prCorsWarn').style.display = 'block';
+    // Disable Create PR button — it will fail anyway
+    document.getElementById('prSubmit').disabled = true;
+    document.getElementById('prSubmit').title = 'Cannot reach GitHub API from file:// — serve via HTTP';
+    document.getElementById('prTestConn').disabled = true;
+  } else {
+    document.getElementById('prCorsWarn').style.display = 'none';
+    document.getElementById('prSubmit').disabled = false;
+    document.getElementById('prSubmit').title = '';
+    document.getElementById('prTestConn').disabled = false;
+  }
+}
+
+// ── Test Connection button ───────────────────────────────────────────────────
+document.getElementById('prTestConn').addEventListener('click', async () => {
+  const token   = document.getElementById('prToken').value.trim();
+  const apiBase = document.getElementById('prApiBase').value.trim().replace(/\/$/, '');
+  const owner   = document.getElementById('prOwner').value.trim();
+  const repo    = document.getElementById('prRepo').value.trim();
+
+  if (!token)  { showToast('Enter your GitHub token first.', 'error'); document.getElementById('prToken').focus(); return; }
+  if (!owner || !repo) { showToast('Enter the owner and repository name first.', 'error'); return; }
+
+  const log    = document.getElementById('prLog');
+  const result = document.getElementById('prResult');
+  log.innerHTML = ''; log.classList.add('visible');
+  result.classList.remove('visible', 'success', 'error'); result.innerHTML = '';
+  document.getElementById('prTestConn').disabled = true;
+  document.getElementById('prTestConn').textContent = 'Testing…';
+
+  let allOk = true;
+
+  // 1. Token identity
+  prLog('●', 'pl-running', 'Verifying token (GET /user)…');
+  try {
+    const user = await ghFetchRaw(apiBase, token, 'user');
+    prLogUpdate('Verifying token', '✓', 'pl-ok', `Token OK — authenticated as @${user.login}`);
+  } catch (e) {
+    prLogUpdate('Verifying token', '✗', 'pl-err', `Token check failed: ${e.message}`);
+    allOk = false;
+  }
+
+  // 2. Repo access
+  prLog('●', 'pl-running', `Accessing repo ${owner}/${repo}…`);
+  try {
+    const repoData = await ghFetch(apiBase, token, `${owner}/${repo}`);
+    prLogUpdate(`Accessing repo`, '✓', 'pl-ok',
+      `Repo found — default branch: "${repoData.default_branch}", private: ${repoData.private}`);
+    // Auto-fill base branch with the repo default if still empty
+    const baseEl = document.getElementById('prBase');
+    if (!baseEl.value) baseEl.value = repoData.default_branch;
+  } catch (e) {
+    prLogUpdate(`Accessing repo`, '✗', 'pl-err', `Repo access failed: ${e.message}`);
+    allOk = false;
+  }
+
+  // 3. List branches
+  if (allOk) {
+    prLog('●', 'pl-running', 'Listing branches…');
+    try {
+      const branches = await ghFetch(apiBase, token, `${owner}/${repo}/branches?per_page=100`);
+      const names = (branches || []).map(b => b.name);
+      prLogUpdate('Listing branches', '✓', 'pl-ok', `${names.length} branch(es): ${names.slice(0, 8).join(', ')}${names.length > 8 ? '…' : ''}`);
+
+    } catch (e) {
+      prLogUpdate('Listing branches', '✗', 'pl-err', `Branch list failed: ${e.message}`);
+    }
+  }
+
+  result.className = `pr-result visible ${allOk ? 'success' : 'error'}`;
+  result.innerHTML = allOk
+    ? 'Connection successful — you can now create the PR.'
+    : 'Connection failed. Check token scope (<code>repo</code>) and API base URL.';
+
+  document.getElementById('prTestConn').disabled = false;
+  document.getElementById('prTestConn').textContent = 'Test Connection';
+});
+
+/** Variant of ghFetch for non-/repos/ endpoints (e.g. /user) */
+async function ghFetchRaw(apiBase, token, path) {
+  const url  = `${apiBase}/${path}`;
+  const opts = {
+    method: 'GET',
+    headers: {
+      Authorization: `token ${token}`,
+      Accept: 'application/vnd.github.v3+json',
+    },
+  };
+  let res;
+  try { res = await fetch(url, opts); }
+  catch (e) { throw new Error(`Network error — ${e.message}`); }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(`${data.message || 'HTTP ' + res.status} [GET ${url}]`);
+  return data;
+}
+
+// Click outside to close (only if not submitting)
+document.getElementById('prOverlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('prOverlay') &&
+      !document.getElementById('prSubmit').disabled) {
+    document.getElementById('prOverlay').classList.remove('open');
+  }
+});
+
+/** Append a line to the terminal-style log */
+function prLog(icon, cssClass, text, linkHref) {
+  const log  = document.getElementById('prLog');
+  log.classList.add('visible');
+  const line = document.createElement('div');
+  line.className = 'pr-log-line';
+  const iconEl = document.createElement('span');
+  iconEl.className = `pr-log-icon ${cssClass}`;
+  iconEl.textContent = icon;
+  const textEl = document.createElement('span');
+  textEl.style.color = '#e5e7eb';
+  if (linkHref) {
+    textEl.innerHTML = `${esc(text)} <a class="pl-link" href="${esc(linkHref)}" target="_blank">Open PR ↗</a>`;
+  } else {
+    textEl.textContent = text;
+  }
+  line.appendChild(iconEl);
+  line.appendChild(textEl);
+  log.appendChild(line);
+  log.scrollTop = log.scrollHeight;
+}
+
+/** Update an existing log line (find by its text prefix) */
+function prLogUpdate(prefix, icon, cssClass, newText, linkHref) {
+  const log   = document.getElementById('prLog');
+  const lines = log.querySelectorAll('.pr-log-line');
+  for (const line of lines) {
+    const span = line.querySelector('span:last-child');
+    if (span && span.textContent.startsWith(prefix)) {
+      line.querySelector('.pr-log-icon').className = `pr-log-icon ${cssClass}`;
+      line.querySelector('.pr-log-icon').textContent = icon;
+      if (linkHref) {
+        span.innerHTML = `${esc(newText)} <a class="pl-link" href="${esc(linkHref)}" target="_blank">Open PR ↗</a>`;
+      } else {
+        span.textContent = newText;
+      }
+      return;
+    }
+  }
+  prLog(icon, cssClass, newText, linkHref); // fallback: append
+}
+
+/** GitHub API helper — raises on non-2xx with a detailed error message */
+async function ghFetch(apiBase, token, path, method = 'GET', body = null) {
+  const url = `${apiBase}/repos/${path}`;
+  const opts = {
+    method,
+    headers: {
+      Authorization: `token ${token}`,
+      Accept: 'application/vnd.github.v3+json',
+      'Content-Type': 'application/json',
+    },
+  };
+  if (body) opts.body = JSON.stringify(body);
+
+  let res;
+  try {
+    res = await fetch(url, opts);
+  } catch (networkErr) {
+    // e.g. CORS block, network offline
+    throw new Error(`Network error reaching ${url} — ${networkErr.message}`);
+  }
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    // Surface GitHub's message + errors array when available
+    const ghMsg  = data.message || '';
+    const errors = Array.isArray(data.errors) ? ' (' + data.errors.map(e => e.message || JSON.stringify(e)).join('; ') + ')' : '';
+    throw new Error(`${ghMsg || 'HTTP ' + res.status}${errors} [${method} ${url}]`);
+  }
+  return data;
+}
+
+/** Submit handler — orchestrates all GitHub API calls */
+document.getElementById('prSubmit').addEventListener('click', async function prSubmitHandler() {
+  // ── Done state: close PR modal and fire mailto directly ─────────────────
+  if (this._prDone) {
+    const data = this._prDone;
+    this._prDone = null;
+    document.getElementById('prOverlay').classList.remove('open');
+    openEmailTemplate(data);   // fires mailto: directly — no modal shown
+    return;
+  }
+
+  const token   = document.getElementById('prToken').value.trim();
+  const apiBase = document.getElementById('prApiBase').value.trim().replace(/\/$/, '');
+  const owner   = document.getElementById('prOwner').value.trim();
+  const repo    = document.getElementById('prRepo').value.trim();
+  const base    = document.getElementById('prBase').value.trim();
+  const head    = document.getElementById('prHead').value.trim();
+  const title   = document.getElementById('prTitle').value.trim();
+  const body    = document.getElementById('prBody').value.trim();
+
+  // ── Validation ──────────────────────────────────────────────────────────
+  if (!token)  { showToast('GitHub token is required.', 'error'); document.getElementById('prToken').focus();  return; }
+  if (!owner)  { showToast('Repository owner is required.', 'error');  return; }
+  if (!repo)   { showToast('Repository name is required.', 'error');   return; }
+  if (!base)   { showToast('Base branch is required.', 'error');       return; }
+  if (!head)   { showToast('Head branch name is required.', 'error');  return; }
+  if (!title)  { showToast('PR title is required.', 'error'); document.getElementById('prTitle').focus(); return; }
+
+  const overlay    = document.getElementById('prOverlay');
+  const jsonContent = overlay._jsonContent;
+  const filePath    = overlay._agentFile;
+  const repoPath    = `${owner}/${repo}`;
+
+  // ── Lock UI ──────────────────────────────────────────────────────────────
+  document.getElementById('prSubmit').disabled = true;
+  document.getElementById('prSubmit').textContent = 'Working…';
+  document.getElementById('prCancel').style.display = 'none';
+
+  const log    = document.getElementById('prLog');
+  const result = document.getElementById('prResult');
+  log.innerHTML = ''; log.classList.add('visible');
+  result.classList.remove('visible', 'success', 'error');
+  result.innerHTML = '';
+
+  try {
+    // ── Step 1: Resolve base branch SHA via GET /repos/:owner/:repo/branches/:branch
+    prLog('●', 'pl-running', `Resolving base branch "${base}"…`);
+    const branchData = await ghFetch(apiBase, token, `${repoPath}/branches/${encodeURIComponent(base)}`);
+    const baseSHA    = branchData.commit.sha;
+    prLogUpdate(`Resolving base branch`, '✓', 'pl-ok', `Base branch "${base}" found (${baseSHA.slice(0, 7)})`);
+
+    // ── Step 2: Create head branch ──────────────────────────────────────────
+    prLog('●', 'pl-running', `Creating branch "${head}"…`);
+    try {
+      await ghFetch(apiBase, token, `${repoPath}/git/refs`, 'POST', {
+        ref: `refs/heads/${head}`,
+        sha: baseSHA,
+      });
+      prLogUpdate(`Creating branch`, '✓', 'pl-ok', `Branch "${head}" created`);
+    } catch (branchErr) {
+      // GHE returns "Reference already exists" when the branch is already there
+      if (branchErr.message.includes('already exists')) {
+        prLogUpdate(`Creating branch`, '⚠', 'pl-ok', `Branch "${head}" already exists — will update file on it`);
+      } else {
+        throw branchErr;
+      }
+    }
+
+    // ── Step 3: Get current file SHA on the head branch (required by the Contents API for updates)
+    prLog('●', 'pl-running', `Fetching current file SHA for "${filePath}"…`);
+    let currentFileSHA = null;
+    try {
+      const fileData = await ghFetch(apiBase, token, `${repoPath}/contents/${filePath}?ref=${encodeURIComponent(head)}`);
+      currentFileSHA = fileData.sha;
+      prLogUpdate(`Fetching current file`, '✓', 'pl-ok', `Existing file found (SHA ${currentFileSHA.slice(0, 7)})`);
+    } catch (fileErr) {
+      // 404 = file doesn't exist on the branch yet — that's fine, we'll create it.
+      // ghFetch appends " [METHOD URL]" to the message, so check startsWith, not ===
+      if (fileErr.message.startsWith('Not Found')) {
+        prLogUpdate(`Fetching current file`, '○', 'pl-ok', `File not yet on branch — will create it`);
+      } else {
+        throw fileErr;
+      }
+    }
+
+    // ── Step 4: Commit the updated file ─────────────────────────────────────
+    prLog('●', 'pl-running', `Committing "${filePath}"…`);
+    const commitPayload = {
+      message: `chore(config): update ${filePath} via Config Editor — ${new Date().toISOString().split('T')[0]}`,
+      content: btoa(unescape(encodeURIComponent(jsonContent))), // UTF-8 safe → base64
+      branch: head,
+    };
+    if (currentFileSHA) commitPayload.sha = currentFileSHA;
+    await ghFetch(apiBase, token, `${repoPath}/contents/${filePath}`, 'PUT', commitPayload);
+    prLogUpdate(`Committing`, '✓', 'pl-ok', `File committed to branch "${head}"`);
+
+    // ── Step 5: Open the Pull Request ───────────────────────────────────────
+    prLog('●', 'pl-running', 'Creating pull request…');
+    const prData = await ghFetch(apiBase, token, `${repoPath}/pulls`, 'POST', {
+      title,
+      body,
+      head,
+      base,
+    });
+    const prUrl = prData.html_url;
+    prLogUpdate(`Creating pull request`, '✓', 'pl-ok', `PR #${prData.number} created!`, prUrl);
+
+    // ── Success ─────────────────────────────────────────────────────────────
+    result.className = 'pr-result visible success';
+    result.innerHTML = `PR #${prData.number} created successfully! <a href="${esc(prUrl)}" target="_blank">View on GitHub ↗</a>`;
+    // Wire Done to close PR modal and fire email client directly
+    const doneBtn = document.getElementById('prSubmit');
+    doneBtn.textContent = '✉ Done & Send Email';
+    doneBtn.disabled = false;
+    doneBtn._prDone = { number: prData.number, url: prUrl, title, head, base };
+    document.getElementById('prFooterStatus').textContent = '';
+    document.getElementById('prCancel').style.display = '';
+    document.getElementById('prCancel').textContent = 'Close';
+
+  } catch (err) {
+    prLog('✗', 'pl-err', `Error: ${err.message}`);
+    result.className = 'pr-result visible error';
+    result.innerHTML = `Failed: ${esc(err.message)}. Check the log above for details.`;
+    document.getElementById('prSubmit').disabled = false;
+    document.getElementById('prSubmit').textContent = 'Retry';
+    document.getElementById('prCancel').style.display = '';
+    document.getElementById('prFooterStatus').textContent = 'Something went wrong — see the log';
+  }
+});
+
+// ─── Preview JSON ─────────────────────────────────────────────────────────────
+document.getElementById('btnPreview').addEventListener('click', () => {
+  const existing = document.getElementById('previewPanel');
+  if (existing) { existing.remove(); return; }
+  const cfg   = configs[activeAgent];
+  const agent = AGENTS[activeAgent];
+  const panel = document.createElement('div');
+  panel.id = 'previewPanel';
+  panel.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:150;display:flex;align-items:center;justify-content:center;';
+  panel.innerHTML = `<div style="background:#1f2328;border-radius:10px;width:720px;max-width:96vw;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;">
+    <div style="padding:14px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #374151;">
+      <span style="color:#e5e7eb;font-weight:600;font-size:14px">Preview: ${esc(agent.file)}</span>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-sm btn-primary" id="previewCopy">Copy</button>
+        <button class="btn btn-sm btn-ghost" id="previewClose">Close</button>
+      </div>
+    </div>
+    <pre class="json-pre" style="margin:0;border-radius:0;flex:1;overflow:auto">${esc(toAsciiJson(cfg))}</pre>
+  </div>`;
+  document.body.appendChild(panel);
+  document.getElementById('previewClose').addEventListener('click', () => panel.remove());
+  document.getElementById('previewCopy').addEventListener('click', () => {
+    navigator.clipboard.writeText(toAsciiJson(cfg)).then(() => showToast('Copied!', 'info'));
+  });
+});
+
+// ─── GitHub Import Modal ──────────────────────────────────────────────────────
+
+/** Log a line into the import modal terminal */
+function ghImportLog(icon, cssClass, text) {
+  const log = document.getElementById('ghImportLog');
+  log.classList.add('visible');
+  const line = document.createElement('div');
+  line.className = 'pr-log-line';
+  const iconEl = document.createElement('span');
+  iconEl.className = `pr-log-icon ${cssClass}`;
+  iconEl.textContent = icon;
+  const textEl = document.createElement('span');
+  textEl.style.color = '#e5e7eb';
+  textEl.textContent = text;
+  line.appendChild(iconEl); line.appendChild(textEl);
+  log.appendChild(line);
+  log.scrollTop = log.scrollHeight;
+}
+
+/** Populate the branch <select> from the GitHub API */
+function ghImportFetchBranches() {
+  // Branch is fixed to "develop" — sync token to PR modal if already present
+  const token = document.getElementById('ghImportToken').value.trim();
+  if (token) document.getElementById('prToken').value = token;
+}
+
+/** Open the GitHub import modal */
+function openGhImportModal() {
+  const agent = AGENTS[activeAgent];
+
+  // Pre-fill file path for active agent
+  document.getElementById('ghImportFilePath').value = `config/${agent.file}`;
+  document.getElementById('ghImportSub').textContent = `Importing config for ${agent.label}`;
+
+  // Sync token from PR modal (if already filled in there)
+  const existingToken = document.getElementById('prToken').value;
+  if (existingToken) document.getElementById('ghImportToken').value = existingToken;
+
+  // Reset log / result
+  const log    = document.getElementById('ghImportLog');
+  const result = document.getElementById('ghImportResult');
+  log.innerHTML = ''; log.classList.remove('visible');
+  result.innerHTML = ''; result.classList.remove('visible', 'success', 'error');
+  document.getElementById('ghImportFooterStatus').textContent = '';
+  document.getElementById('ghImportSubmit').disabled = false;
+  document.getElementById('ghImportSubmit').textContent = 'Import';
+
+  // Show CORS warning if on file://
+  if (location.protocol === 'file:') {
+    document.getElementById('ghImportCorsWarn').style.display = 'block';
+    document.getElementById('ghImportSubmit').disabled = true;
+  } else {
+    document.getElementById('ghImportCorsWarn').style.display = 'none';
+    document.getElementById('ghImportSubmit').disabled = false;
+  }
+
+  document.getElementById('ghImportOverlay').classList.add('open');
+
+  // Auto-fetch branches if token already present
+  ghImportFetchBranches();
+}
+
+// Open import modal
+document.getElementById('btnImport').addEventListener('click', openGhImportModal);
+
+// Close import modal
+['ghImportClose', 'ghImportCancel'].forEach(id =>
+  document.getElementById(id).addEventListener('click', () =>
+    document.getElementById('ghImportOverlay').classList.remove('open')));
+
+// Click outside to close
+document.getElementById('ghImportOverlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('ghImportOverlay') &&
+      !document.getElementById('ghImportSubmit').disabled) {
+    document.getElementById('ghImportOverlay').classList.remove('open');
+  }
+});
+
+// Token show/hide for import modal
+document.getElementById('ghImportTokenEye').addEventListener('click', () => {
+  const inp = document.getElementById('ghImportToken');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+});
+
+// Sync token to PR modal when typed in the import modal
+document.getElementById('ghImportToken').addEventListener('input', () => {
+  const token = document.getElementById('ghImportToken').value.trim();
+  if (token) document.getElementById('prToken').value = token;
+});
+
+// Submit: fetch config JSON from the selected branch and load it into the editor
+document.getElementById('ghImportSubmit').addEventListener('click', async () => {
+  const token   = document.getElementById('ghImportToken').value.trim();
+  const apiBase = document.getElementById('ghImportApiBase').value.trim().replace(/\/$/, '');
+  const owner   = document.getElementById('ghImportOwner').value.trim();
+  const repo    = document.getElementById('ghImportRepo').value.trim();
+  const branch  = document.getElementById('ghImportBranch').value.trim();
+  const filePath = `config/${AGENTS[activeAgent].file}`;
+
+  if (!token) { showToast('GitHub token is required.', 'error'); document.getElementById('ghImportToken').focus(); return; }
+
+  const log    = document.getElementById('ghImportLog');
+  const result = document.getElementById('ghImportResult');
+  log.innerHTML = ''; log.classList.add('visible');
+  result.innerHTML = ''; result.classList.remove('visible', 'success', 'error');
+  document.getElementById('ghImportSubmit').disabled = true;
+  document.getElementById('ghImportSubmit').textContent = 'Importing…';
+  document.getElementById('ghImportFooterStatus').textContent = '';
+
+  try {
+    // Fetch the file contents via GitHub Contents API
+    ghImportLog('●', 'pl-running', `Fetching ${filePath} from branch "${branch}"…`);
+    const fileData = await ghFetch(apiBase, token, `${owner}/${repo}/contents/${filePath}?ref=${encodeURIComponent(branch)}`);
+
+    // Decode base64 content (GitHub returns it base64-encoded)
+    const rawJson = decodeURIComponent(escape(atob(fileData.content.replace(/\n/g, ''))));
+    let parsed;
+    try { parsed = JSON.parse(rawJson); }
+    catch (parseErr) { throw new Error(`Invalid JSON in file: ${parseErr.message}`); }
+
+    // Auto-detect agent and validate
+    let targetAgent = activeAgent;
+    if ('config' in parsed && 'llm_config' in parsed && !('procurement' in parsed)) {
+      targetAgent = 'sourcing';
+    } else if ('procurement' in parsed && 'form_config' in parsed && !('llm_config' in parsed)) {
+      targetAgent = 'intake';
+    }
+
+    const validationError = AGENTS[targetAgent].validate(parsed);
+    if (validationError) throw new Error(`Validation failed — ${validationError}`);
+
+    // Apply to editor state
+    configImported[targetAgent] = true;
+    setSaveEnabled(true);
+    configs[targetAgent] = parsed;
+    if (targetAgent !== activeAgent) {
+      activeAgent = targetAgent;
+      document.querySelectorAll('.agent-btn').forEach(b =>
+        b.classList.toggle('active', b.dataset.agent === targetAgent));
+    }
+
+    activeTab = 'overview';
+    buildSidebar(targetAgent);
+    refreshHeader();
+    switchTab('overview');
+    markDirty();
+
+    // Sync token to PR modal
+    document.getElementById('prToken').value = token;
+
+    ghImportLog('✓', 'pl-ok', `Imported v${parsed.version} from branch "${branch}"`);
+    result.className = 'pr-result visible success';
+    result.innerHTML = `Successfully imported <strong>${filePath}</strong> (v${esc(parsed.version)}) from branch <strong>${esc(branch)}</strong>.`;
+    // Re-enable and repurpose the submit button as a "Done / Close" button
+    document.getElementById('ghImportSubmit').disabled = false;
+    document.getElementById('ghImportSubmit').textContent = 'Done';
+    document.getElementById('ghImportSubmit').onclick = () =>
+      document.getElementById('ghImportOverlay').classList.remove('open');
+    document.getElementById('ghImportCancel').textContent = 'Close';
+    showToast(`Imported ${filePath} from branch "${branch}".`, 'success');
+
+  } catch (err) {
+    ghImportLog('✗', 'pl-err', `Error: ${err.message}`);
+    result.className = 'pr-result visible error';
+    result.innerHTML = `Import failed: ${esc(err.message)}`;
+    document.getElementById('ghImportSubmit').disabled = false;
+    document.getElementById('ghImportSubmit').textContent = 'Retry';
+    document.getElementById('ghImportFooterStatus').textContent = 'Something went wrong — see log above';
+  }
+});
+
+// ─── Modal wiring ─────────────────────────────────────────────────────────────
+document.getElementById('modalCancel').addEventListener('click', () => {
+  document.getElementById('confirmModal').classList.remove('open');
+  confirmCallback = null;
+});
+document.getElementById('modalConfirm').addEventListener('click', () => {
+  document.getElementById('confirmModal').classList.remove('open');
+  if (confirmCallback) { confirmCallback(); confirmCallback = null; }
+});
+
+// ─── Agent switcher wiring ────────────────────────────────────────────────────
+document.querySelectorAll('.agent-btn').forEach(btn =>
+  btn.addEventListener('click', () => switchAgent(btn.dataset.agent)));
+
+// ─── Email Template Modal ─────────────────────────────────────────────────────
+
+/** Open the email template overlay pre-filled with PR details */
+function openEmailTemplate({ number, url, title, head, base }) {
+  const to      = 'naveenkumar.gundluri@ibm.com';
+  const subject = `[PR Review Request] ${title} — PR #${number}`;
+  const body    = `Hi,\n\nI've raised a Pull Request for the S2P App Config changes and would appreciate your review.\n\nPR Title : ${title}\nPR Number: #${number}\nBranch   : ${head} → ${base}\nPR Link  : ${url}\n\nPlease review and approve the changes at your earliest convenience. Let me know if you have any questions or need additional context.\n\nThank you!`;
+  const mailto  = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const a = document.createElement('a');
+  a.href = mailto;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+document.getElementById('emailClose').addEventListener('click', () => {
+  document.getElementById('emailOverlay').classList.remove('open');
+});
+document.getElementById('emailDone').addEventListener('click', () => {
+  const to      = document.getElementById('emailTo').value.trim();
+  const subject = document.getElementById('emailSubject').value;
+  const body    = document.getElementById('emailBody').value;
+  const mailto  = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const a = document.createElement('a');
+  a.href = mailto;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  document.getElementById('emailOverlay').classList.remove('open');
+});
+document.getElementById('emailCopySubject').addEventListener('click', () => {
+  const sub = document.getElementById('emailSubject').value;
+  navigator.clipboard.writeText(sub).then(() => showToast('Subject copied!', 'info'));
+});
+document.getElementById('emailCopyBody').addEventListener('click', () => {
+  const body = document.getElementById('emailBody').value;
+  navigator.clipboard.writeText(body).then(() => showToast('Body copied!', 'info'));
+});
+document.getElementById('emailMailto').addEventListener('click', () => {
+  const to      = document.getElementById('emailTo').value.trim();
+  const subject = document.getElementById('emailSubject').value;
+  const body    = document.getElementById('emailBody').value;
+  const mailto  = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const a = document.createElement('a');
+  a.href = mailto;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+});
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+loadConfig('intake');
+</script>
+</body>
+</html>
